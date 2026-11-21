@@ -3,7 +3,6 @@ package com.swifty.glasshome
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.File
@@ -11,19 +10,14 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * The background photo in three versions:
- * [soft]  slightly blurred, for the full-screen background
- * [frost] very blurred and lightened, for the frosted-glass shelf and panels
- * [glass] blurred and brightened, used to fill the clock's glass numbers
+ * The background photo. It's blurred once when it loads (not every frame), so it costs
+ * nothing while you move around.
  */
-class WallpaperSet(val soft: ImageBitmap, val frost: ImageBitmap, val glass: Bitmap)
-
 object WallpaperRepo {
 
     /**
-     * Your own picture: put any landscape photo at wallpaper/wallpaper.jpg in the GitHub repo
-     * and Glass Home picks it up the next time it opens. No reinstall needed.
-     * Delete that file to go back to the built-in beach.
+     * Your own picture: wallpaper/wallpaper.jpg in the GitHub repo. Glass Home downloads it
+     * the next time it opens, so changing it needs no reinstall.
      */
     private const val CUSTOM_URL =
         "https://raw.githubusercontent.com/owenjswift/fire-launcher/main/wallpaper/wallpaper.jpg"
@@ -31,14 +25,13 @@ object WallpaperRepo {
     private fun cacheFile(ctx: Context) = File(ctx.filesDir, "wallpaper.jpg")
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("wallpaper", Context.MODE_PRIVATE)
 
-    /** Builds the wallpaper from your custom photo if downloaded, else the built-in beach. */
-    fun load(ctx: Context): WallpaperSet? = runCatching {
+    fun load(ctx: Context): ImageBitmap? = runCatching {
         val file = cacheFile(ctx)
         val src = (if (file.exists()) decodeFile(file) else null) ?: decodeDefault(ctx) ?: return null
-        build(src)
+        prepare(src).asImageBitmap()
     }.getOrNull()
 
-    /** Checks GitHub for a new custom photo. Returns true when the wallpaper changed. */
+    /** Checks GitHub for a new photo. Returns true when the wallpaper changed. */
     fun refresh(ctx: Context): Boolean = runCatching {
         val p = prefs(ctx)
         val file = cacheFile(ctx)
@@ -58,7 +51,6 @@ object WallpaperRepo {
                     true
                 }
                 404 -> {
-                    // No custom photo in the repo: go back to the built-in beach.
                     val had = file.exists()
                     file.delete()
                     p.edit().remove("etag").apply()
@@ -71,63 +63,38 @@ object WallpaperRepo {
         }
     }.getOrDefault(false)
 
-    private fun decodeDefault(ctx: Context): Bitmap? {
-        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeResource(ctx.resources, R.drawable.wallpaper, opts)
-        opts.inSampleSize = sampleSize(opts.outWidth)
-        opts.inJustDecodeBounds = false
-        return BitmapFactory.decodeResource(ctx.resources, R.drawable.wallpaper, opts)
-    }
+    private fun decodeDefault(ctx: Context): Bitmap? =
+        BitmapFactory.decodeResource(ctx.resources, R.drawable.wallpaper)
 
     private fun decodeFile(file: File): Bitmap? {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, opts)
         if (opts.outWidth <= 0) return null
-        opts.inSampleSize = sampleSize(opts.outWidth)
+        var s = 1
+        while (opts.outWidth / (s * 2) >= 1600) s *= 2
+        opts.inSampleSize = s
         opts.inJustDecodeBounds = false
         return BitmapFactory.decodeFile(file.path, opts)
     }
 
-    private fun sampleSize(width: Int): Int {
-        var s = 1
-        while (width / (s * 2) >= 1600) s *= 2
-        return s
-    }
-
-    private fun build(src: Bitmap): WallpaperSet {
-        val full = centerCrop(src, 1600, 900)
-        val soft = blur(Bitmap.createScaledBitmap(full, 800, 450, true), radius = 2)
-        val frost = lighten(blur(Bitmap.createScaledBitmap(full, 200, 113, true), radius = 5), 0.30f)
-        val glass = lighten(blur(Bitmap.createScaledBitmap(full, 320, 180, true), radius = 4), 0.45f)
-        return WallpaperSet(soft.asImageBitmap(), frost.asImageBitmap(), glass)
-    }
-
-    /** Crops to the TV's 16:9 shape from the middle, then resizes. */
-    private fun centerCrop(src: Bitmap, w: Int, h: Int): Bitmap {
-        val target = w.toFloat() / h
-        val srcRatio = src.width.toFloat() / src.height
-        val (cw, ch) = if (srcRatio > target) (src.height * target).toInt() to src.height
+    /** Crop to 16:9 and give it a gentle blur, done once. */
+    private fun prepare(src: Bitmap): Bitmap {
+        val target = 16f / 9f
+        val ratio = src.width.toFloat() / src.height
+        val (cw, ch) = if (ratio > target) (src.height * target).toInt() to src.height
         else src.width to (src.width / target).toInt()
-        val x = (src.width - cw) / 2
-        val y = (src.height - ch) / 2
-        return Bitmap.createScaledBitmap(Bitmap.createBitmap(src, x, y, cw, ch), w, h, true)
+        val cropped = Bitmap.createBitmap(src, (src.width - cw) / 2, (src.height - ch) / 2, cw, ch)
+        // Shrinking and letting the TV scale it back up smoothly is itself a soft blur.
+        return blur(Bitmap.createScaledBitmap(cropped, 640, 360, true), radius = 1)
     }
 
-    /** Washes the picture towards white, like light coming through frosted glass. */
-    private fun lighten(bmp: Bitmap, amount: Float): Bitmap {
-        val out = bmp.copy(Bitmap.Config.ARGB_8888, true)
-        Canvas(out).drawColor(android.graphics.Color.argb((amount * 255).toInt(), 255, 255, 255))
-        return out
-    }
-
-    /** A fast blur: three passes of a box blur look almost the same as a proper Gaussian blur. */
     private fun blur(bmp: Bitmap, radius: Int): Bitmap {
         val w = bmp.width
         val h = bmp.height
         val px = IntArray(w * h)
         bmp.getPixels(px, 0, w, 0, 0, w, h)
         val tmp = IntArray(w * h)
-        repeat(3) {
+        repeat(2) {
             boxPass(px, tmp, w, h, radius, horizontal = true)
             boxPass(tmp, px, w, h, radius, horizontal = false)
         }

@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
     private var favourites by mutableStateOf<List<String>>(emptyList())
     private var autoOpenOn by mutableStateOf(true)
     private var loaded by mutableStateOf(false)
-    private var wallpaper by mutableStateOf<WallpaperSet?>(null)
+    private var wallpaper by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

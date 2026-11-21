@@ -21,12 +21,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Get the built-in beach photo (Sean Oulashin, Unsplash Licence)
+      - name: Use the wallpaper photo from the repo as the built-in one
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
-          curl -fsSL "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&h=1080&fit=crop&q=85&fm=jpg" \
-            -o app/src/main/res/drawable-nodpi/wallpaper.jpg
-          ls -l app/src/main/res/drawable-nodpi/
+          cp wallpaper/wallpaper.jpg app/src/main/res/drawable-nodpi/wallpaper.jpg
 
       - name: Build the app
         run: |

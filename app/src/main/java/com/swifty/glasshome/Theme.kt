@@ -6,31 +6,24 @@ import androidx.compose.ui.unit.sp
 
 /** Every colour and size for the look lives here, so restyling means editing just this file. */
 object Glass {
-    // Frosted glass (white tint over the blurred photo)
-    val shelfTint = Color.White.copy(alpha = 0.22f)
-    val shelfEdge = Color.White.copy(alpha = 0.45f)
-    val panelTint = Color.White.copy(alpha = 0.28f)
-    val pillTint = Color.White.copy(alpha = 0.20f)
-
-    // App cards
-    val cardPlain = Color.White.copy(alpha = 0.92f)   // cards for apps with no TV artwork
-    val cardText = Color(0xFF1C1C1E)
-    val focusRing = Color.White
+    // Glass surfaces: a light white wash over the (already blurred) photo
+    val glass = Color.White.copy(alpha = 0.16f)
+    val glassEdge = Color.White.copy(alpha = 0.30f)
 
     // Text
     val text = Color.White
-    val textSoft = Color.White.copy(alpha = 0.85f)
+    val textSoft = Color.White.copy(alpha = 0.8f)
 
     // Sizes
     val sidePadding = 56.dp
-    val shelfCardWidth = 176.dp     // the big cards on the bottom shelf
+    val shelfCardWidth = 176.dp     // the big cards on the shelf
     val gridCardWidth = 152.dp      // cards in "All apps"
-    val cardGap = 20.dp
+    val cardGap = 22.dp
     val cardCorner = 14.dp
-    val shelfCorner = 28.dp
-    const val focusScale = 1.09f
+    val shelfCorner = 30.dp
+    const val focusScale = 1.10f
     const val appsPerRow = 5
-    val clockSize = 150.sp
+    val clockSize = 168.sp
 
     // Weather location (Melbourne). Change these to move it somewhere else.
     const val weatherLat = -37.81

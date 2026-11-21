@@ -1,7 +1,5 @@
-# Your own wallpaper
+# Wallpaper
 
-Put a landscape photo here named **`wallpaper.jpg`** (16:9 looks best, 1920×1080 or bigger).
-Glass Home checks for it each time it opens, so the TV picks it up without reinstalling.
-Delete it to go back to the built-in beach.
-
-The built-in beach photo is by Sean Oulashin on Unsplash (Unsplash Licence, free to use).
+`wallpaper.jpg` here is the home screen background. Swap it for any landscape photo
+(16:9 looks best). Glass Home downloads it the next time it opens, so no reinstall is needed,
+and it's also built into the app as the starting background.
