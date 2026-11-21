@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Glass Home</string>
+    <string name="watcher_description">Opens Glass Home automatically whenever Amazon\'s home screen appears, after you turn on the TV or press Home. It only watches for Amazon\'s home screen and reads nothing else.</string>
+</resources>
