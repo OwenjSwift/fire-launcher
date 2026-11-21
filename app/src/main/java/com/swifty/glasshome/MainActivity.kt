@@ -21,6 +21,7 @@ class MainActivity : ComponentActivity() {
     private var favourites by mutableStateOf<List<String>>(emptyList())
     private var autoOpenOn by mutableStateOf(true)
     private var loaded by mutableStateOf(false)
+    private var wallpaper by mutableStateOf<WallpaperSet?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,12 +32,17 @@ class MainActivity : ComponentActivity() {
             override fun handleOnBackPressed() = Unit
         })
 
+        lifecycleScope.launch {
+            wallpaper = withContext(Dispatchers.Default) { WallpaperRepo.load(this@MainActivity) }
+        }
+
         setContent {
             HomeScreen(
                 apps = apps,
                 favourites = favourites,
                 loaded = loaded,
                 autoOpenOn = autoOpenOn,
+                wallpaper = wallpaper,
                 onLaunch = { AppRepository.launch(this, it) },
                 onToggleFavourite = { favourites = prefs.toggleFavourite(favourites, it) },
                 onOpenSettings = { openSettings(Settings.ACTION_SETTINGS) },
@@ -55,6 +61,11 @@ class MainActivity : ComponentActivity() {
             apps = list
             favourites = prefs.favourites(list)
             loaded = true
+            // Check GitHub for a new custom wallpaper photo
+            val changed = withContext(Dispatchers.IO) { WallpaperRepo.refresh(this@MainActivity) }
+            if (changed) {
+                wallpaper = withContext(Dispatchers.Default) { WallpaperRepo.load(this@MainActivity) }
+            }
         }
     }
 

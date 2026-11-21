@@ -2,9 +2,10 @@
 
 A custom home screen for the Fire TV Stick 4K Max, in a frosted-glass style inspired by Apple TV.
 
-- All your installed apps, with their TV artwork, on drifting colour glows behind frosted tiles
-- Tiles lift, brighten and shine when you land on them
-- A Favourites row up top: press the **☰ (menu)** button on any app to add or remove it
+- A softly blurred beach photo (or your own picture, see `wallpaper/README.md`)
+- A tall liquid-glass clock and Melbourne weather
+- Your favourite apps as big cards on a frosted-glass shelf, with every app underneath
+- Press the **☰ (menu)** button on any app to add or remove it from the shelf
 - Opens by itself when the TV starts and when you press Home (Amazon's screen may flash briefly first)
 
 ## Install or update on the Fire TV

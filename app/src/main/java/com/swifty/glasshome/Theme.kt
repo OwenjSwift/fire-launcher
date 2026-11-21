@@ -4,35 +4,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Every colour and size for the look lives here, so restyling means editing just this file.
- */
+/** Every colour and size for the look lives here, so restyling means editing just this file. */
 object Glass {
-    // Old glow wallpaper colours (the beach colours live in Beach.kt).
-    val sky = Color(0xFF070B1E)
-    val glowA = Color(0xFF3446E0)   // blue
-    val glowB = Color(0xFF8A3FD1)   // violet
-    val glowC = Color(0xFF0FA3B1)   // teal
-    val glowD = Color(0xFFE0457B)   // rose
+    // Frosted glass (white tint over the blurred photo)
+    val shelfTint = Color.White.copy(alpha = 0.22f)
+    val shelfEdge = Color.White.copy(alpha = 0.45f)
+    val panelTint = Color.White.copy(alpha = 0.28f)
+    val pillTint = Color.White.copy(alpha = 0.20f)
 
-    // Frosted tiles
-    val tileFill = Color.White.copy(alpha = 0.10f)
-    val tileFillFocused = Color.White.copy(alpha = 0.24f)
-    val tileEdge = Color.White.copy(alpha = 0.16f)
-    val tileEdgeFocused = Color.White.copy(alpha = 0.85f)
+    // App cards
+    val cardPlain = Color.White.copy(alpha = 0.92f)   // cards for apps with no TV artwork
+    val cardText = Color(0xFF1C1C1E)
+    val focusRing = Color.White
 
     // Text
     val text = Color.White
-    val textSoft = Color.White.copy(alpha = 0.65f)
+    val textSoft = Color.White.copy(alpha = 0.85f)
 
     // Sizes
-    val sidePadding = 64.dp
-    val tileWidth = 150.dp
-    val tileGap = 22.dp
-    val corner = 16.dp
-    const val focusScale = 1.13f
+    val sidePadding = 56.dp
+    val shelfCardWidth = 176.dp     // the big cards on the bottom shelf
+    val gridCardWidth = 152.dp      // cards in "All apps"
+    val cardGap = 20.dp
+    val cardCorner = 14.dp
+    val shelfCorner = 28.dp
+    const val focusScale = 1.09f
     const val appsPerRow = 5
-    val clockSize = 124.sp
+    val clockSize = 150.sp
 
     // Weather location (Melbourne). Change these to move it somewhere else.
     const val weatherLat = -37.81
