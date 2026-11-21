@@ -2,12 +2,13 @@ package com.swifty.glasshome
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Every colour and size for the look lives here, so restyling means editing just this file.
  */
 object Glass {
-    // Wallpaper: a deep night sky with slow-drifting colour glows.
+    // Old glow wallpaper colours (the beach colours live in Beach.kt).
     val sky = Color(0xFF070B1E)
     val glowA = Color(0xFF3446E0)   // blue
     val glowB = Color(0xFF8A3FD1)   // violet
@@ -31,4 +32,10 @@ object Glass {
     val corner = 16.dp
     const val focusScale = 1.13f
     const val appsPerRow = 5
+    val clockSize = 124.sp
+
+    // Weather location (Melbourne). Change these to move it somewhere else.
+    const val weatherLat = -37.81
+    const val weatherLon = 144.96
+    const val weatherPlace = "Melbourne"
 }

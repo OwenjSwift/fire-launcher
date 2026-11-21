@@ -93,27 +93,42 @@ fun HomeScreen(
     val byPkg = remember(apps) { apps.associateBy { it.packageName } }
     val favApps = favourites.mapNotNull { byPkg[it] }
 
+    val now by produceState(initialValue = Date()) {
+        while (true) {
+            value = Date()
+            delay(60_000 - (System.currentTimeMillis() % 60_000) + 50)
+        }
+    }
+    val hour = Calendar.getInstance().apply { time = now }.get(Calendar.HOUR_OF_DAY)
+    val weather by produceState<Weather?>(initialValue = null) {
+        while (true) {
+            val fresh = WeatherRepo.fetch()
+            if (fresh != null) value = fresh
+            delay(if (fresh != null) 30 * 60_000L else 2 * 60_000L)
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
-        GlassWallpaper()
+        BeachWallpaper(hour)
 
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(top = 36.dp, bottom = 48.dp)
+                .padding(top = 28.dp, bottom = 48.dp)
         ) {
-            Header(Modifier.padding(horizontal = Glass.sidePadding))
+            GlassClock(now, weather, Modifier.padding(horizontal = Glass.sidePadding))
 
             // The big name of whatever you're on, like the Apple TV top shelf.
             AnimatedContent(
                 targetState = focusedName,
                 transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
                 label = "title",
-                modifier = Modifier.padding(horizontal = Glass.sidePadding, vertical = 18.dp),
+                modifier = Modifier.padding(start = Glass.sidePadding, end = Glass.sidePadding, top = 14.dp, bottom = 2.dp),
             ) { name ->
                 BasicText(
                     name.ifEmpty { " " },
-                    style = TextStyle(color = Glass.text, fontSize = 40.sp, fontWeight = FontWeight.SemiBold),
+                    style = TextStyle(color = Glass.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -184,36 +199,6 @@ fun HomeScreen(
             delay(50)
             runCatching { firstTile.requestFocus() }
         }
-    }
-}
-
-@Composable
-private fun Header(modifier: Modifier = Modifier) {
-    val now by produceState(initialValue = Date()) {
-        while (true) {
-            value = Date()
-            val msToNextMinute = 60_000 - (System.currentTimeMillis() % 60_000)
-            delay(msToNextMinute + 50)
-        }
-    }
-    val hour = Calendar.getInstance().apply { time = now }.get(Calendar.HOUR_OF_DAY)
-    val greeting = when (hour) {
-        in 5..11 -> "Good morning"
-        in 12..17 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-        Column(Modifier.weight(1f)) {
-            BasicText(greeting, style = TextStyle(color = Glass.textSoft, fontSize = 18.sp))
-            BasicText(
-                SimpleDateFormat("EEEE d MMMM", Locale.getDefault()).format(now),
-                style = TextStyle(color = Glass.text, fontSize = 22.sp, fontWeight = FontWeight.Medium),
-            )
-        }
-        BasicText(
-            SimpleDateFormat("h:mm", Locale.getDefault()).format(now),
-            style = TextStyle(color = Glass.text, fontSize = 48.sp, fontWeight = FontWeight.Light),
-        )
     }
 }
 
@@ -367,32 +352,3 @@ private fun SetupCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** The wallpaper: soft colour glows drifting slowly behind frosted glass. */
-@Composable
-private fun GlassWallpaper() {
-    val drift = rememberInfiniteTransition(label = "wallpaper")
-    val t by drift.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(40_000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "t",
-    )
-    Canvas(Modifier.fillMaxSize()) {
-        drawRect(Glass.sky)
-        val w = size.width
-        val h = size.height
-        glow(Glass.glowA, Offset(w * (0.15f + 0.20f * t), h * (0.25f + 0.10f * t)), w * 0.55f)
-        glow(Glass.glowB, Offset(w * (0.85f - 0.25f * t), h * (0.20f + 0.25f * t)), w * 0.50f)
-        glow(Glass.glowC, Offset(w * (0.55f + 0.15f * t), h * (0.95f - 0.20f * t)), w * 0.60f)
-        glow(Glass.glowD, Offset(w * (0.05f + 0.10f * t), h * (0.95f - 0.10f * t)), w * 0.35f)
-        // Darken the bottom a little so the tiles and text stay easy to read.
-        drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.55f))))
-    }
-}
-
-private fun DrawScope.glow(color: Color, center: Offset, radius: Float) {
-    drawCircle(
-        brush = Brush.radialGradient(listOf(color.copy(alpha = 0.55f), Color.Transparent), center, radius),
-        radius = radius,
-        center = center,
-    )
-}
