@@ -23,7 +23,7 @@ object Glass {
     val shelfCorner = 24.dp
     const val focusScale = 1.10f
     const val appsPerRow = 6
-    val clockSize = 112.sp
+    val clockSize = 128.sp
 
     // Weather location (Melbourne). Change these to move it somewhere else.
     const val weatherLat = -37.81

@@ -30,18 +30,37 @@ object AppRepository {
         "com.amazon.tahoe",            // Amazon Kids
         "com.amazon.minitv",
         "com.amazon.minitv.android",
+        "com.esaba.downloader",        // Downloader: reachable from Tools in All apps
     )
 
-    /** App names we never show (exact names, ignoring capitals). */
-    private val hiddenNames = setOf(
+    const val DOWNLOADER = "com.esaba.downloader"
+
+    /**
+     * App names we never show. Compared with spaces, capitals and symbols removed,
+     * so "Amazon Game Centre" and "amazon game center" both match.
+     */
+    private val hiddenNames = listOf(
         "news", "amazon news",
-        "minitv", "mini tv", "amazon minitv", "amazon mini tv",
+        "minitv", "amazon minitv",
         "luna", "amazon luna",
         "amazon kids", "amazon kids+", "amazon freetime", "freetime",
-    )
+        "alexa smart home", "smart home",
+        "amazon game centre", "amazon game center", "game centre", "game center",
+        "amazon live shopping", "live shopping", "amazon live",
+        "amazon photos", "photos",
+        "appstore", "amazon appstore", "app store",
+        "downloader", "downloads", "files", "file manager",
+        "fire tv profile", "fire tv profiles", "profiles",
+        "hi",
+        "screen saver", "screensaver",
+        "system status monitor",
+        "what should i watch", "what should i watch?",
+    ).map { normalise(it) }.toSet()
+
+    private fun normalise(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
 
     private fun isHidden(pkg: String, label: String): Boolean =
-        pkg in hiddenPackages || label.trim().lowercase() in hiddenNames
+        pkg in hiddenPackages || normalise(label) in hiddenNames
 
     /** Loads every launchable app, sorted A to Z. Call this off the main thread. */
     fun loadApps(context: Context): List<AppEntry> {

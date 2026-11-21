@@ -1,6 +1,8 @@
 package com.swifty.glasshome
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -12,11 +14,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,19 +30,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +54,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -62,13 +65,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Date
 
 private val smooth = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)
@@ -100,49 +100,93 @@ fun HomeScreen(
         }
     }
 
-    var focusedName by remember { mutableStateOf("") }
-    val firstCard = remember { FocusRequester() }
-    val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
+    var showAll by remember { mutableStateOf(false) }
+    val shelfFocus = remember { FocusRequester() }
+    val gridFocus = remember { FocusRequester() }
     val byPkg = remember(apps) { apps.associateBy { it.packageName } }
-    val shelfApps = remember(apps, favourites) { favourites.mapNotNull { byPkg[it] }.ifEmpty { apps.take(6) } }
+    val shelfApps = remember(apps, favourites) { favourites.mapNotNull { byPkg[it] }.ifEmpty { apps.take(5) } }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF2A2035))) {
-        val pageHeight = maxHeight
+    BackHandler(enabled = showAll) { showAll = false }
 
-        // The photo (already blurred once when it loaded). Drawn as one plain image.
+    Box(Modifier.fillMaxSize().background(Color(0xFF2A2035))) {
+        // The photo, drawn once as a plain image
         wallpaper?.let {
             Image(
                 it, contentDescription = null, contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.High, modifier = Modifier.fillMaxSize(),
             )
         }
-        // A very light shade at the bottom so the shelf sits nicely
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.25f))
-            )
-        )
 
-        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            // ---------- Page 1: clock and the shelf, laid out top to bottom ----------
-            Column(Modifier.fillMaxWidth().height(pageHeight)) {
-                Row(
-                    Modifier.fillMaxWidth().height(40.dp).padding(top = 18.dp, end = Glass.sidePadding),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    weather?.let { WeatherPill(it) }
-                }
+        Crossfade(targetState = showAll, animationSpec = tween(260), label = "page") { all ->
+            if (!all) {
+                HomePage(
+                    now = now,
+                    weather = weather,
+                    shelfApps = shelfApps,
+                    shelfFocus = shelfFocus,
+                    onLaunch = onLaunch,
+                    onToggleFavourite = onToggleFavourite,
+                    onOpenAll = { showAll = true },
+                )
+            } else {
+                AllAppsPage(
+                    apps = apps,
+                    favourites = favourites,
+                    autoOpenOn = autoOpenOn,
+                    gridFocus = gridFocus,
+                    onLaunch = onLaunch,
+                    onToggleFavourite = onToggleFavourite,
+                    onOpenSettings = onOpenSettings,
+                    onSetUpAutoOpen = onSetUpAutoOpen,
+                    onAmazonHome = onAmazonHome,
+                    onClose = { showAll = false },
+                )
+            }
+        }
+    }
 
-                GlassClock(now, Modifier.fillMaxWidth())
+    // Put the remote's focus in the right place whenever the page changes or apps load.
+    LaunchedEffect(showAll, loaded) {
+        if (!loaded || apps.isEmpty()) return@LaunchedEffect
+        delay(80)
+        runCatching { if (showAll) gridFocus.requestFocus() else shelfFocus.requestFocus() }
+    }
+}
 
-                Spacer(Modifier.weight(1f))
+/** The home page. Nothing on it scrolls, so the clock always stays put. */
+@Composable
+private fun HomePage(
+    now: Date,
+    weather: Weather?,
+    shelfApps: List<AppEntry>,
+    shelfFocus: FocusRequester,
+    onLaunch: (String) -> Unit,
+    onToggleFavourite: (String) -> Unit,
+    onOpenAll: () -> Unit,
+) {
+    var focusedName by remember { mutableStateOf("") }
 
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.25f))))
+
+        weather?.let {
+            WeatherPill(it, Modifier.align(Alignment.TopEnd).padding(top = 22.dp, end = Glass.sidePadding))
+        }
+
+        GlassClock(now, Modifier.align(Alignment.TopCenter).padding(top = 44.dp))
+
+        // Title + shelf, centred, the shelf only as wide as its apps (no empty gap)
+        Column(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val shelfShape = RoundedCornerShape(Glass.shelfCorner)
+            Column(horizontalAlignment = Alignment.Start) {
                 AnimatedContent(
                     targetState = focusedName,
                     transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
                     label = "title",
-                    modifier = Modifier.padding(start = Glass.sidePadding + 4.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = 10.dp, bottom = 8.dp),
                 ) { name ->
                     BasicText(
                         name.ifEmpty { " " },
@@ -151,176 +195,182 @@ fun HomeScreen(
                         style = TextStyle(color = Glass.text, fontSize = 22.sp, fontWeight = FontWeight.Medium, shadow = softShadow),
                     )
                 }
-                // The glass shelf
-                val shelfShape = RoundedCornerShape(Glass.shelfCorner)
-                Box(
+                Row(
                     Modifier
-                        .padding(start = Glass.sidePadding - 14.dp, end = Glass.sidePadding - 14.dp, bottom = 26.dp)
-                        .fillMaxWidth()
                         .clip(shelfShape)
                         .background(Glass.glass)
                         .border(1.dp, Glass.glassEdge, shelfShape)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Glass.cardGap),
                 ) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(Glass.cardGap),
-                    ) {
-                        itemsIndexed(shelfApps, key = { _, a -> a.packageName }) { i, app ->
-                            AppCard(
-                                app = app,
-                                width = Glass.shelfCardWidth,
-                                modifier = if (i == 0) Modifier.focusRequester(firstCard) else Modifier,
-                                onFocused = {
-                                    focusedName = app.label
-                                    if (scroll.value != 0) scope.launch { scroll.animateScrollTo(0) }
+                    shelfApps.forEachIndexed { i, app ->
+                        AppCard(
+                            app = app,
+                            modifier = (if (i == 0) Modifier.focusRequester(shelfFocus) else Modifier)
+                                .width(Glass.shelfCardWidth)
+                                .onPreviewKeyEvent {
+                                    if (it.key == Key.DirectionDown && it.type == KeyEventType.KeyDown) { onOpenAll(); true } else false
                                 },
-                                onClick = { onLaunch(app.packageName) },
-                                onMenu = { onToggleFavourite(app.packageName) },
-                            )
-                        }
+                            onFocused = { focusedName = app.label },
+                            onClick = { onLaunch(app.packageName) },
+                            onMenu = { onToggleFavourite(app.packageName) },
+                        )
                     }
                 }
             }
-
-            // ---------- Page 2: every app ----------
-            val panelShape = RoundedCornerShape(Glass.shelfCorner)
-            Column(
-                Modifier
-                    .padding(horizontal = Glass.sidePadding - 16.dp)
-                    .padding(bottom = 40.dp)
-                    .fillMaxWidth()
-                    .clip(panelShape)
-                    .background(Glass.glass)
-                    .border(1.dp, Glass.glassEdge, panelShape)
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-            ) {
-                if (!autoOpenOn) {
-                    SetupCard(onSetUpAutoOpen)
-                    Spacer(Modifier.height(18.dp))
-                }
-                SectionTitle("All apps")
-                apps.chunked(Glass.appsPerRow).forEach { row ->
-                    Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(Glass.cardGap)) {
-                        row.forEach { app ->
-                            AppCard(
-                                app = app,
-                                width = Glass.gridCardWidth,
-                                onFocused = { focusedName = app.label },
-                                onClick = { onLaunch(app.packageName) },
-                                onMenu = { onToggleFavourite(app.packageName) },
-                            )
-                        }
-                    }
-                }
-                BasicText(
-                    "Press ☰ on any app to add it to, or remove it from, the shelf.",
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 8.dp),
-                    style = TextStyle(color = Glass.textSoft, fontSize = 13.sp),
-                )
-                Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(Glass.cardGap)) {
-                    ActionCard("Settings", onFocused = { focusedName = "Settings" }, onClick = onOpenSettings)
-                    ActionCard("Amazon Home", onFocused = { focusedName = "Amazon Home" }, onClick = onAmazonHome)
-                }
-            }
+            BasicText(
+                "⌄  All apps",
+                modifier = Modifier.padding(top = 8.dp),
+                style = TextStyle(color = Glass.textSoft, fontSize = 13.sp, shadow = softShadow),
+            )
         }
     }
+}
 
-    LaunchedEffect(loaded) {
-        if (loaded && apps.isNotEmpty()) {
-            delay(60)
-            runCatching { firstCard.requestFocus() }
+/** Every app in a grid, on its own page. Back (or Up from the top row) returns home. */
+@Composable
+private fun AllAppsPage(
+    apps: List<AppEntry>,
+    favourites: List<String>,
+    autoOpenOn: Boolean,
+    gridFocus: FocusRequester,
+    onLaunch: (String) -> Unit,
+    onToggleFavourite: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    onSetUpAutoOpen: () -> Unit,
+    onAmazonHome: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val cols = Glass.appsPerRow
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(cols),
+            contentPadding = PaddingValues(horizontal = Glass.sidePadding, vertical = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(Glass.cardGap),
+            verticalArrangement = Arrangement.spacedBy(Glass.cardGap),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle("All apps", "Press ☰ on an app to add it to, or take it off, the home shelf. Press Back to go home.")
+            }
+            itemsIndexed(apps, key = { _, a -> a.packageName }) { i, app ->
+                AppCard(
+                    app = app,
+                    showStar = app.packageName in favourites,
+                    modifier = (if (i == 0) Modifier.focusRequester(gridFocus) else Modifier)
+                        .fillMaxWidth()
+                        .onPreviewKeyEvent {
+                            if (i < cols && it.key == Key.DirectionUp && it.type == KeyEventType.KeyDown) { onClose(); true } else false
+                        },
+                    onFocused = {},
+                    onClick = { onLaunch(app.packageName) },
+                    onMenu = { onToggleFavourite(app.packageName) },
+                    showLabel = true,
+                )
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle("Tools", null, Modifier.padding(top = 12.dp))
+            }
+            item { ToolCard("Settings", onOpenSettings) }
+            item { ToolCard("Downloader") { onLaunch(AppRepository.DOWNLOADER) } }
+            item { ToolCard("Amazon Home", onAmazonHome) }
+            if (!autoOpenOn) {
+                item(span = { GridItemSpan(maxLineSpan) }) { SetupCard(onSetUpAutoOpen) }
+            }
         }
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    BasicText(
-        text,
-        modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
-        style = TextStyle(color = Glass.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, shadow = softShadow),
-    )
+private fun SectionTitle(title: String, hint: String?, modifier: Modifier = Modifier) {
+    Column(modifier.padding(start = 2.dp, bottom = 2.dp)) {
+        BasicText(title, style = TextStyle(color = Glass.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, shadow = softShadow))
+        if (hint != null) BasicText(hint, style = TextStyle(color = Glass.textSoft, fontSize = 12.sp))
+    }
 }
 
 @Composable
 private fun AppCard(
     app: AppEntry,
-    width: Dp,
     onFocused: () -> Unit,
     onClick: () -> Unit,
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    showLabel: Boolean = false,
+    showStar: Boolean = false,
 ) {
     var focused by remember { mutableStateOf(false) }
-    Card(
-        focused = focused,
-        width = width,
-        modifier = modifier
-            .onFocusChanged {
-                focused = it.isFocused
-                if (it.isFocused) onFocused()
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(
+            focused = focused,
+            modifier = Modifier
+                .onFocusChanged {
+                    focused = it.isFocused
+                    if (it.isFocused) onFocused()
+                }
+                .onPreviewKeyEvent {
+                    if (it.key == Key.Menu && it.type == KeyEventType.KeyUp) { onMenu(); true } else false
+                },
+            background = if (app.banner != null) Color.Black else app.tint,
+            onClick = onClick,
+        ) {
+            if (app.banner != null) {
+                Image(app.banner, contentDescription = app.label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            } else {
+                // No TV artwork: a card in the app's own colour with its icon and name.
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.Transparent))))
+                Column(
+                    Modifier.fillMaxSize().padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    app.icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(30.dp)) }
+                    Spacer(Modifier.height(4.dp))
+                    BasicText(
+                        app.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = TextStyle(color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                    )
+                }
             }
-            .onPreviewKeyEvent {
-                if (it.key == Key.Menu && it.type == KeyEventType.KeyUp) { onMenu(); true } else false
-            },
-        background = if (app.banner != null) Color.Black else app.tint,
-        onClick = onClick,
-    ) {
-        if (app.banner != null) {
-            Image(app.banner, contentDescription = app.label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        } else {
-            // No TV artwork: a card in the app's own colour with its icon and name, Apple TV style.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.Transparent))
-                )
-            )
-            Column(
-                Modifier.fillMaxSize().padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                app.icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(32.dp)) }
-                Spacer(Modifier.height(6.dp))
+            if (showStar) {
                 BasicText(
-                    app.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                    "★", style = TextStyle(color = Color.White, fontSize = 11.sp, shadow = softShadow),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
                 )
             }
+        }
+        if (showLabel) {
+            BasicText(
+                app.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp),
+                style = TextStyle(color = if (focused) Glass.text else Glass.textSoft, fontSize = 12.sp),
+            )
         }
     }
 }
 
 @Composable
-private fun ActionCard(label: String, onFocused: () -> Unit, onClick: () -> Unit) {
+private fun ToolCard(label: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Card(
         focused = focused,
-        width = Glass.gridCardWidth,
-        modifier = Modifier.onFocusChanged {
-            focused = it.isFocused
-            if (it.isFocused) onFocused()
-        },
+        modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
         background = Color.White.copy(alpha = 0.22f),
         onClick = onClick,
     ) {
         BasicText(
             label,
             modifier = Modifier.align(Alignment.Center),
-            style = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+            style = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
         )
     }
 }
 
-/**
- * A rounded card. When selected it grows a little and lifts on a soft shadow, the way
- * Apple TV does it. Nothing else moves, and unselected cards have no shadow at all,
- * which keeps things smooth on the Fire Stick.
- */
+/** A rounded 16:9 card. When selected it grows a little and lifts on a soft shadow. */
 @Composable
 private fun Card(
     focused: Boolean,
-    width: Dp,
     modifier: Modifier,
     background: Color,
     onClick: () -> Unit,
@@ -332,7 +382,7 @@ private fun Card(
 
     Box(
         modifier
-            .width(width)
+            .fillMaxWidth()
             .aspectRatio(16f / 9f)
             .zIndex(if (focused) 1f else 0f)
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -351,6 +401,7 @@ private fun SetupCard(onClick: () -> Unit) {
     val shape = RoundedCornerShape(Glass.cardCorner)
     Box(
         Modifier
+            .padding(top = 12.dp)
             .fillMaxWidth()
             .clip(shape)
             .background(Color.White.copy(alpha = if (focused) 0.35f else 0.2f))
@@ -359,10 +410,10 @@ private fun SetupCard(onClick: () -> Unit) {
             .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
         Column {
-            BasicText("Turn on auto-open", style = TextStyle(color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold))
+            BasicText("Turn on auto-open", style = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold))
             BasicText(
                 "So Glass Home shows up by itself. Press select, then turn on Glass Home under Accessibility.",
-                style = TextStyle(color = Glass.textSoft, fontSize = 13.sp),
+                style = TextStyle(color = Glass.textSoft, fontSize = 12.sp),
             )
         }
     }
