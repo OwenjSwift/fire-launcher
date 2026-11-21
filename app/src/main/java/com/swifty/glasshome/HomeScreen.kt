@@ -114,7 +114,7 @@ fun HomeScreen(
         wallpaper?.let {
             Image(
                 it, contentDescription = null, contentScale = ContentScale.Crop,
-                filterQuality = FilterQuality.Low, modifier = Modifier.fillMaxSize(),
+                filterQuality = FilterQuality.High, modifier = Modifier.fillMaxSize(),
             )
         }
         // A very light shade at the bottom so the shelf sits nicely
@@ -125,55 +125,58 @@ fun HomeScreen(
         )
 
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            // ---------- Page 1: clock and the shelf ----------
-            Box(Modifier.fillMaxWidth().height(pageHeight)) {
-                weather?.let {
-                    WeatherPill(it, Modifier.align(Alignment.TopEnd).padding(top = 26.dp, end = Glass.sidePadding))
+            // ---------- Page 1: clock and the shelf, laid out top to bottom ----------
+            Column(Modifier.fillMaxWidth().height(pageHeight)) {
+                Row(
+                    Modifier.fillMaxWidth().height(40.dp).padding(top = 18.dp, end = Glass.sidePadding),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    weather?.let { WeatherPill(it) }
                 }
 
-                GlassClock(now, Modifier.align(Alignment.TopCenter).padding(top = 20.dp))
+                GlassClock(now, Modifier.fillMaxWidth())
 
-                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(bottom = 24.dp)) {
-                    AnimatedContent(
-                        targetState = focusedName,
-                        transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
-                        label = "title",
-                        modifier = Modifier.padding(start = Glass.sidePadding + 6.dp, bottom = 10.dp),
-                    ) { name ->
-                        BasicText(
-                            name.ifEmpty { " " },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = TextStyle(color = Glass.text, fontSize = 28.sp, fontWeight = FontWeight.Medium, shadow = softShadow),
-                        )
-                    }
-                    // The glass shelf
-                    val shelfShape = RoundedCornerShape(Glass.shelfCorner)
-                    Box(
-                        Modifier
-                            .padding(horizontal = Glass.sidePadding - 16.dp)
-                            .fillMaxWidth()
-                            .clip(shelfShape)
-                            .background(Glass.glass)
-                            .border(1.dp, Glass.glassEdge, shelfShape)
+                Spacer(Modifier.weight(1f))
+
+                AnimatedContent(
+                    targetState = focusedName,
+                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+                    label = "title",
+                    modifier = Modifier.padding(start = Glass.sidePadding + 4.dp, bottom = 8.dp),
+                ) { name ->
+                    BasicText(
+                        name.ifEmpty { " " },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = TextStyle(color = Glass.text, fontSize = 22.sp, fontWeight = FontWeight.Medium, shadow = softShadow),
+                    )
+                }
+                // The glass shelf
+                val shelfShape = RoundedCornerShape(Glass.shelfCorner)
+                Box(
+                    Modifier
+                        .padding(start = Glass.sidePadding - 14.dp, end = Glass.sidePadding - 14.dp, bottom = 26.dp)
+                        .fillMaxWidth()
+                        .clip(shelfShape)
+                        .background(Glass.glass)
+                        .border(1.dp, Glass.glassEdge, shelfShape)
+                ) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Glass.cardGap),
                     ) {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
-                            horizontalArrangement = Arrangement.spacedBy(Glass.cardGap),
-                        ) {
-                            itemsIndexed(shelfApps, key = { _, a -> a.packageName }) { i, app ->
-                                AppCard(
-                                    app = app,
-                                    width = Glass.shelfCardWidth,
-                                    modifier = if (i == 0) Modifier.focusRequester(firstCard) else Modifier,
-                                    onFocused = {
-                                        focusedName = app.label
-                                        if (scroll.value != 0) scope.launch { scroll.animateScrollTo(0) }
-                                    },
-                                    onClick = { onLaunch(app.packageName) },
-                                    onMenu = { onToggleFavourite(app.packageName) },
-                                )
-                            }
+                        itemsIndexed(shelfApps, key = { _, a -> a.packageName }) { i, app ->
+                            AppCard(
+                                app = app,
+                                width = Glass.shelfCardWidth,
+                                modifier = if (i == 0) Modifier.focusRequester(firstCard) else Modifier,
+                                onFocused = {
+                                    focusedName = app.label
+                                    if (scroll.value != 0) scope.launch { scroll.animateScrollTo(0) }
+                                },
+                                onClick = { onLaunch(app.packageName) },
+                                onMenu = { onToggleFavourite(app.packageName) },
+                            )
                         }
                     }
                 }
@@ -277,11 +280,11 @@ private fun AppCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                app.icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(42.dp)) }
+                app.icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(32.dp)) }
                 Spacer(Modifier.height(6.dp))
                 BasicText(
                     app.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                    style = TextStyle(color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
                 )
             }
         }
@@ -325,7 +328,7 @@ private fun Card(
 ) {
     val shape = RoundedCornerShape(Glass.cardCorner)
     val scale by animateFloatAsState(if (focused) Glass.focusScale else 1f, smooth, label = "scale")
-    val lift by animateDpAsState(if (focused) 18.dp else 0.dp, tween(220, easing = FastOutSlowInEasing), label = "lift")
+    val lift by animateDpAsState(if (focused) 14.dp else 0.dp, tween(220, easing = FastOutSlowInEasing), label = "lift")
 
     Box(
         modifier

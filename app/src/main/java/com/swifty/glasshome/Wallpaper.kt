@@ -10,8 +10,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * The background photo. It's blurred once when it loads (not every frame), so it costs
- * nothing while you move around.
+ * The background photo. It's prepared once when it loads, so it costs nothing while
+ * you move around.
  */
 object WallpaperRepo {
 
@@ -84,8 +84,8 @@ object WallpaperRepo {
         val (cw, ch) = if (ratio > target) (src.height * target).toInt() to src.height
         else src.width to (src.width / target).toInt()
         val cropped = Bitmap.createBitmap(src, (src.width - cw) / 2, (src.height - ch) / 2, cw, ch)
-        // Shrinking and letting the TV scale it back up smoothly is itself a soft blur.
-        return blur(Bitmap.createScaledBitmap(cropped, 640, 360, true), radius = 1)
+        // Keep it sharp: only shrink photos that are bigger than the TV needs.
+        return if (cw > 1920) Bitmap.createScaledBitmap(cropped, 1920, 1080, true) else cropped
     }
 
     private fun blur(bmp: Bitmap, radius: Int): Bitmap {

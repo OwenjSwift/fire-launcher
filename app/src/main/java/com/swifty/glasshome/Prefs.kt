@@ -9,23 +9,24 @@ import android.provider.Settings
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("glass_home", Context.MODE_PRIVATE)
 
-    /** Apps we put in Favourites the first time, if you have them installed. */
-    private val starterFavourites = listOf(
-        "com.netflix.ninja",
-        "com.amazon.firetv.youtube",
-        "com.google.android.youtube.tv",
-        "com.amazon.avod.thirdpartyclient",
-        "com.disney.disneyplus",
-        "com.spotify.tv.android",
-        "com.plexapp.android",
+    /** The shelf to start with, in this order: matched by app name so it works whatever the package is called. */
+    private val starterNames = listOf(
+        listOf("netflix"),
+        listOf("youtube"),
+        listOf("disney+", "disney plus", "disney"),
+        listOf("kayo", "kayo sports"),
     )
 
     fun favourites(installed: List<AppEntry>): List<String> {
         val installedSet = installed.map { it.packageName }.toSet()
         val saved = sp.getString(KEY_FAVS, null)
-        val list = saved?.split(",")?.filter { it.isNotBlank() }
-            ?: starterFavourites
-        return list.filter { it in installedSet }
+        if (saved != null) return saved.split(",").filter { it.isNotBlank() && it in installedSet }
+        return starterNames.mapNotNull { names ->
+            installed.firstOrNull { app ->
+                val l = app.label.trim().lowercase()
+                names.any { l == it || l.startsWith("$it ") || l.startsWith(it) }
+            }?.packageName
+        }.distinct()
     }
 
     fun toggleFavourite(current: List<String>, pkg: String): List<String> {
@@ -44,7 +45,7 @@ class Prefs(context: Context) {
     fun isPaused(): Boolean = SystemClock.elapsedRealtime() < sp.getLong(KEY_PAUSE_UNTIL, 0L)
 
     companion object {
-        private const val KEY_FAVS = "favourites"
+        private const val KEY_FAVS = "favourites_v2"  // v2: reset to Netflix, YouTube, Disney+, Kayo
         private const val KEY_PAUSE_UNTIL = "pause_until"
 
         /** True when the auto-open helper is switched on in Fire TV settings. */
