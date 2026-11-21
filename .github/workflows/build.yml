@@ -25,7 +25,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
-          cp app/build/outputs/apk/release/app-release.apk GlassHome.apk
+          cp app/build/outputs/apk/release/app-release.apk glasshome.apk
+          cp glasshome.apk GlassHome.apk
 
       - name: Publish it as the latest release
         uses: softprops/action-gh-release@v2
@@ -33,7 +34,9 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: Glass Home build ${{ github.run_number }}
           body: |
-            Install on your Fire TV with Downloader using:
-            https://github.com/${{ github.repository }}/releases/latest/download/GlassHome.apk
-          files: GlassHome.apk
+            Install on your Fire TV with Downloader using (all lowercase):
+            github.com/owenjswift/fire-launcher/releases/latest/download/glasshome.apk
+          files: |
+            glasshome.apk
+            GlassHome.apk
           make_latest: true

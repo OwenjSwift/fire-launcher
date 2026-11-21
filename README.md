@@ -10,7 +10,8 @@ A custom home screen for the Fire TV Stick 4K Max, in a frosted-glass style insp
 ## Install or update on the Fire TV
 
 1. Open **Downloader**, and in the address box type:
-   `https://github.com/OwenjSwift/fire-launcher/releases/latest/download/GlassHome.apk`
+   `github.com/owenjswift/fire-launcher/releases/latest/download/glasshome.apk`
+   (all lowercase, with no spaces)
 2. Press **Go**, then **Install**. If Fire TV asks, allow Downloader to install unknown apps.
 3. Open **Glass Home** from Your Apps.
 
